@@ -3,83 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>迷宫逃脱</title>
+    <title>迷宫逃脱: Cyberpunk</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #2c3e50;
-            color: #ecf0f1;
-            margin-top: 10px;
+            background-color: #0d0d0d;
+            color: #00ff00;
+            margin-top: 5px;
             touch-action: manipulation;
+            overflow: hidden;
         }
-        h1 { margin-bottom: 5px; font-size: 1.5em; color: #f1c40f; text-shadow: 0 0 5px #f39c12; }
-        p { margin: 5px 0 10px 0; font-size: 0.8em; text-align: center; padding: 0 10px; }
+        
+        /* CRT 扫描线特效 */
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 999;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        h1 { margin-bottom: 5px; font-size: 1.5em; text-shadow: 0 0 10px #00ff00; }
         
         .info-panel {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 5px;
-            font-size: 1.2em;
-            font-weight: bold;
-            align-items: center;
+            display: flex; gap: 15px; margin-bottom: 5px; font-size: 1.1em; font-weight: bold; align-items: center; z-index: 10;
         }
-        #timer { color: #e74c3c; font-weight: bold; font-size: 1.2em; }
-        .hell-mode-text { color: #e74c3c; animation: blink 1s infinite; font-weight: bold; }
-        @keyframes blink { 50% { opacity: 0; } }
+        #timer { color: #ff003c; font-weight: bold; font-size: 1.3em; text-shadow: 0 0 8px #ff003c; }
+        .hell-mode-text { color: #00ffff; animation: glitch 2s infinite; font-weight: bold; text-shadow: 0 0 5px #00ffff; }
+        
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 1px) }
+            40% { transform: translate(-1px, -1px) }
+            60% { transform: translate(2px, 1px) }
+            80% { transform: translate(1px, -1px) }
+            100% { transform: translate(0) }
+        }
 
-        #stats-panel { margin-bottom: 10px; font-size: 0.9em; color: #bdc3c7; }
-        .death-count { color: #e74c3c; font-weight: bold; font-size: 1.2em; }
+        #stats-panel { font-size: 0.9em; color: #008800; z-index: 10; margin-bottom: 5px; }
+        .death-count { color: #ff003c; font-weight: bold; font-size: 1.2em; text-shadow: 0 0 5px #ff003c; }
+
+        #game-wrapper {
+            position: relative;
+        }
 
         #game-container {
             display: grid;
             gap: 1px;
-            background-color: #34495e;
+            background-color: #111;
             padding: 5px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-            transition: transform 0.1s;
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            transition: transform 0.1s, filter 0.2s;
         }
-        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-2px, 0, 0); }
-            20%, 80% { transform: translate3d(4px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
-            40%, 60% { transform: translate3d(8px, 0, 0); }
+        
+        /* 迷雾遮罩 */
+        #fog {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle 80px at 50px 50px, transparent 0%, rgba(0,0,0,0.95) 80%, black 100%);
+            pointer-events: none;
+            z-index: 20;
+            display: none;
         }
 
-        .cell { border-radius: 2px; }
-        @media (min-width: 600px) { #game-container { padding: 10px; gap: 2px; } }
+        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-3px, 0, 0) rotate(-1deg); filter: hue-rotate(90deg); }
+            20%, 80% { transform: translate3d(5px, 0, 0) rotate(1deg); }
+            30%, 50%, 70% { transform: translate3d(-10px, 0, 0) rotate(-2deg); filter: invert(1); }
+            40%, 60% { transform: translate3d(10px, 0, 0) rotate(2deg); }
+        }
+
+        .cell { border-radius: 1px; }
         
-        .wall { background-color: #7f8c8d; }
-        .path { background-color: #ecf0f1; }
-        .player { background-color: #e74c3c; border-radius: 50%; box-shadow: 0 0 5px #e74c3c; z-index: 10; transition: all 0.05s; }
-        .goal { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(0.95); } 50% { transform: scale(1.05); } 100% { transform: scale(0.95); } }
+        .wall { background-color: #003300; border: 1px solid #005500; }
+        .path { background-color: #050505; }
+        .player { background-color: #00ffff; border-radius: 2px; box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; z-index: 10; transition: all 0.05s; }
+        .goal { background-color: #ff00ff; box-shadow: 0 0 15px #ff00ff; animation: pulse 1s infinite; }
         
-        #message { margin-top: 10px; font-size: 1.1em; text-align: center; height: 30px; color: #f1c40f; font-weight: bold; }
+        @keyframes pulse { 0% { transform: scale(0.9); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.8; } }
         
-        /* 虚拟方向键控制盘 */
+        #message { margin-top: 10px; font-size: 1.1em; text-align: center; height: 30px; color: #ff003c; font-weight: bold; z-index: 10; text-shadow: 0 0 5px #ff003c; }
+        
         #d-pad {
             display: grid;
             grid-template-columns: repeat(3, 60px);
             grid-template-rows: repeat(3, 60px);
             gap: 5px;
             margin-top: 10px;
-        }
-        @media (min-width: 600px) {
-            #d-pad {
-                grid-template-columns: repeat(3, 70px);
-                grid-template-rows: repeat(3, 70px);
-            }
+            z-index: 10;
         }
         .btn {
-            background-color: #3498db;
-            border: none;
-            border-radius: 8px;
-            color: white;
+            background-color: #003300;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            color: #00ff00;
             font-size: 24px;
             font-weight: bold;
             display: flex;
@@ -87,15 +112,16 @@
             align-items: center;
             user-select: none;
             cursor: pointer;
-            box-shadow: 0 4px #2980b9;
+            box-shadow: 0 0 10px rgba(0,255,0,0.2) inset;
             touch-action: manipulation;
+            transition: all 0.1s;
         }
         .btn:active {
-            background-color: #2980b9;
-            box-shadow: 0 0px #2980b9;
-            transform: translateY(4px);
+            background-color: #00ff00;
+            color: #000;
+            box-shadow: 0 0 20px #00ff00;
         }
-        .btn.empty { background: transparent; box-shadow: none; cursor: default; }
+        .btn.empty { background: transparent; border: none; box-shadow: none; cursor: default; }
         
         #btn-up { grid-column: 2; grid-row: 1; }
         #btn-left { grid-column: 1; grid-row: 2; }
@@ -104,37 +130,52 @@
         
         .sys-btn {
             padding: 8px 16px;
-            font-size: 0.9em;
+            font-size: 1em;
             cursor: pointer;
-            background-color: #e67e22;
-            color: white;
-            border: none;
-            border-radius: 5px;
+            background-color: transparent;
+            color: #00ff00;
+            border: 1px solid #00ff00;
             margin-top: 10px;
-            box-shadow: 0 3px #d35400;
             font-weight: bold;
+            text-transform: uppercase;
+            z-index: 10;
         }
-        .sys-btn:active {
-            box-shadow: 0 0px #d35400;
-            transform: translateY(3px);
+        .sys-btn:active { background-color: #00ff00; color: #000; }
+        
+        .status-alert {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            color: #ff003c;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff003c;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 30;
         }
     </style>
 </head>
 <body>
 
-    <h1>迷宫逃脱 💀</h1>
+    <h1>迷宫逃脱: PROTOCOL_02</h1>
     
     <div id="stats-panel" style="display:none;">
-        失败次数: <span id="death-counter" class="death-count">0</span> | 全球通关率: <span style="color:#f1c40f">0.00001%</span>
+        <span style="color:#00ffff">SYSTEM_DEATHS:</span> <span id="death-counter" class="death-count">0</span> | <span style="color:#00ffff">PASS_RATE:</span> 0.00001%
     </div>
 
     <div class="info-panel">
-        <span id="level-display">关卡: 1</span>
-        <span id="timer-container" style="display:none;">⏳ <span id="timer">00.00</span></span>
+        <span id="level-display">LVL: 1</span>
+        <span id="timer-container" style="display:none;">T-MINUS: <span id="timer">00.00</span>s</span>
     </div>
-    <p id="hint">滑动屏幕、点击屏幕按钮 或 使用键盘方向键移动</p>
-
-    <div id="game-container"></div>
+    
+    <div id="game-wrapper">
+        <div id="game-container"></div>
+        <div id="fog"></div>
+        <div id="status-alert" class="status-alert">CONTROLS HACKED</div>
+    </div>
+    
     <div id="message"></div>
     
     <div id="d-pad">
@@ -149,7 +190,7 @@
         <div class="btn empty"></div>
     </div>
 
-    <button class="sys-btn" onclick="restartLevel()">重新挑战</button>
+    <button class="sys-btn" onclick="restartLevel()">SYSTEM.REBOOT()</button>
 
     <script>
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -171,11 +212,11 @@
             
             if (type === 'move') {
                 oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
-                oscillator.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.05);
-                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-                oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.05);
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.03);
+                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.03);
+                oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.03);
             } else if (type === 'hit') {
                 oscillator.type = 'sawtooth';
                 oscillator.frequency.setValueAtTime(100, audioCtx.currentTime);
@@ -183,11 +224,20 @@
                 gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
                 oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'hack') {
+                // 控制反转的音效
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(2000, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.3);
             } else if (type === 'win') {
-                oscillator.type = 'triangle';
+                oscillator.type = 'square';
                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
-                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.2);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(1760, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
                 oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.5);
             } else if (type === 'fail') {
@@ -217,9 +267,7 @@
                 hell: false
             },
             {
-                // 地狱难度：纯操作挑战
-                // 极长且狭窄的单行道，没有任何隐形墙或骗局。
-                // 要求：全程无失误，速度快且精准，碰到任何墙壁直接重头开始。
+                // 科技感地狱难度：视距受限(Fog) + 定期控制反转(Hack)
                 size: 21,
                 layout: [
                     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -245,32 +293,9 @@
                     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
                 ],
                 start: {x: 1, y: 1},
-                goal: {x: 19, y: 19},
+                goal: {x: 1, y: 19},
                 hell: true,
-                timeLimit: 12.00 // 极致的12秒跑酷
-            },
-            {
-                size: 15,
-                layout: [
-                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
-                    [1,1,1,0,1,0,1,1,1,0,1,0,1,1,1],
-                    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
-                    [1,0,1,1,1,1,1,0,1,1,1,1,1,0,1],
-                    [1,0,0,0,1,0,0,0,1,0,0,0,1,0,1],
-                    [1,1,1,0,1,0,1,1,1,0,1,0,1,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,1,0,0,0,1],
-                    [1,0,1,1,1,1,1,1,1,0,1,1,1,0,1],
-                    [1,0,0,0,1,0,0,0,1,0,0,0,1,0,1],
-                    [1,1,1,0,1,0,1,0,1,1,1,0,1,0,1],
-                    [1,0,0,0,1,0,1,0,0,0,0,0,1,0,1],
-                    [1,0,1,1,1,0,1,1,1,1,1,1,1,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-                ],
-                start: {x: 1, y: 1},
-                goal: {x: 13, y: 13},
-                hell: false
+                timeLimit: 15.00
             }
         ];
 
@@ -279,66 +304,68 @@
         let currentLayout = [];
         let levelFinished = false;
         let timerInterval;
+        let hackInterval;
         let timeLeft = 0;
         let isHellMode = false;
         let deathCount = 0;
+        let isHacked = false; // 控制反转标志
+        let cellSize = 20;
 
         const taunts = [
-            "太慢了，手残了吗？",
-            "就这？连第一步都走不出去？",
-            "建议放弃，你不适合这个游戏。",
-            "别人闭着眼睛都过了。",
-            "要不要我帮你调慢一点？",
-            "碰壁=死，这么难懂吗？",
-            "你的手指是不是打结了？",
-            "再试一次，反正也是输。"
+            "SYS.ERR: HUMAN_REFLEXES_TOO_SLOW",
+            "PROTOCOL_FAILED. TRY_AGAIN.",
+            "YOUR_NEURAL_LINK_IS_WEAK.",
+            "FATAL_EXCEPTION_AT_FINGER",
+            "AI_DOMINATION_IMMINENT.",
+            "PATH_NOT_FOUND. YOU_DIED."
         ];
 
         function initLevel(index) {
             if (index >= levels.length) {
-                document.getElementById('message').innerHTML = "🏆 <b>真正的神！你征服了迷宫！</b>";
+                document.getElementById('message').innerHTML = "ACCESS_GRANTED. <b>YOU BEAT THE MACHINE.</b>";
                 document.getElementById('stats-panel').style.display = 'none';
                 return;
             }
             
             clearInterval(timerInterval);
+            clearInterval(hackInterval);
             levelFinished = false;
+            isHacked = false;
             currentLevelIndex = index;
             const level = levels[index];
             currentLayout = JSON.parse(JSON.stringify(level.layout));
             playerPos = { x: level.start.x, y: level.start.y };
             isHellMode = level.hell;
             
-            document.getElementById('level-display').innerText = `关卡: ${index + 1} / ${levels.length}`;
-            const hint = document.getElementById('hint');
+            document.getElementById('level-display').innerText = `PROTOCOL_0${index + 1}`;
             const msg = document.getElementById('message');
             const stats = document.getElementById('stats-panel');
+            const fog = document.getElementById('fog');
             
             if (isHellMode) {
                 stats.style.display = 'block';
-                hint.innerHTML = "<span class='hell-mode-text'>💀 纯粹的技术：没有任何隐形墙。限时12秒，碰壁即死！</span>";
+                fog.style.display = 'block';
                 document.getElementById('timer-container').style.display = 'inline';
                 timeLeft = level.timeLimit;
                 updateTimerDisplay();
-                msg.innerText = deathCount > 0 ? taunts[Math.floor(Math.random() * taunts.length)] : "证明你实力的时刻到了。";
-                
-                // 只有在第一次移动时才开始计时
+                msg.innerHTML = deathCount > 0 ? taunts[Math.floor(Math.random() * taunts.length)] : "<span class='hell-mode-text'>WARNING: SYSTEM FIREWALL ACTIVE</span>";
             } else {
                 stats.style.display = 'none';
-                hint.innerText = "滑动屏幕、点击屏幕按钮 或 使用键盘方向键移动";
+                fog.style.display = 'none';
                 document.getElementById('timer-container').style.display = 'none';
-                msg.innerText = "";
+                msg.innerText = "INITIALIZING BASIC PROTOCOL...";
             }
             
             const container = document.getElementById('game-container');
             let containerSize = window.innerWidth > 600 ? 500 : window.innerWidth - 40;
-            let cellSize = Math.floor(containerSize / level.size);
+            cellSize = Math.floor(containerSize / level.size);
             if (cellSize < 12) cellSize = 12;
             
             container.style.gridTemplateColumns = `repeat(${level.size}, ${cellSize}px)`;
             container.style.gridTemplateRows = `repeat(${level.size}, ${cellSize}px)`;
             
             drawMaze();
+            updateFog();
         }
 
         function restartLevel() {
@@ -358,10 +385,29 @@
                 timeLeft -= 0.01;
                 if (timeLeft <= 0) {
                     timeLeft = 0;
-                    gameOver("时间到！太慢了！");
+                    gameOver("TIMEOUT_EXCEPTION");
                 }
                 updateTimerDisplay();
             }, 10);
+
+            // 每4秒触发一次"系统被黑"，控制反转
+            if (isHellMode) {
+                hackInterval = setInterval(() => {
+                    if(levelFinished) return;
+                    isHacked = !isHacked;
+                    playSound('hack');
+                    const alertEl = document.getElementById('status-alert');
+                    alertEl.innerText = isHacked ? "CONTROLS INVERTED" : "SYSTEM RESTORED";
+                    alertEl.style.color = isHacked ? "#00ffff" : "#00ff00";
+                    alertEl.style.opacity = 1;
+                    
+                    document.getElementById('game-container').classList.add('shake');
+                    setTimeout(() => {
+                        document.getElementById('game-container').classList.remove('shake');
+                        alertEl.style.opacity = 0;
+                    }, 1000);
+                }, 4000);
+            }
         }
 
         function updateTimerDisplay() {
@@ -372,15 +418,16 @@
             levelFinished = true;
             timerStarted = false;
             clearInterval(timerInterval);
+            clearInterval(hackInterval);
             playSound('fail');
             
             if (isHellMode) {
                 deathCount++;
                 document.getElementById('death-counter').innerText = deathCount;
                 let taunt = taunts[Math.floor(Math.random() * taunts.length)];
-                document.getElementById('message').innerHTML = `❌ <b>${reason}</b><br><span style="font-size:0.8em">${taunt}</span>`;
+                document.getElementById('message').innerHTML = `ERROR: <b>${reason}</b><br><span style="font-size:0.8em">${taunt}</span>`;
             } else {
-                document.getElementById('message').innerHTML = `❌ <b>${reason}</b>`;
+                document.getElementById('message').innerHTML = `ERROR: <b>${reason}</b>`;
             }
             
             document.getElementById('game-container').classList.add('shake');
@@ -399,13 +446,8 @@
                     const cell = document.createElement('div');
                     cell.classList.add('cell');
                     
-                    let cellType = currentLayout[y][x];
-                    
-                    if (cellType === 1) {
-                        cell.classList.add('wall');
-                    } else {
-                        cell.classList.add('path');
-                    }
+                    if (currentLayout[y][x] === 1) cell.classList.add('wall');
+                    else cell.classList.add('path');
 
                     if (x === playerPos.x && y === playerPos.y) {
                         cell.classList.add('player');
@@ -414,20 +456,36 @@
                         cell.classList.add('goal');
                         cell.classList.remove('path');
                     }
-
                     container.appendChild(cell);
                 }
             }
+        }
+
+        function updateFog() {
+            if(!isHellMode) return;
+            const fog = document.getElementById('fog');
+            // 计算玩家在网格中的中心点像素位置
+            const px = (playerPos.x + 0.5) * cellSize + playerPos.x; // +gap
+            const py = (playerPos.y + 0.5) * cellSize + playerPos.y;
+            
+            // 视线范围半径
+            const radius = cellSize * 2.5; 
+            fog.style.background = `radial-gradient(circle ${radius}px at ${px}px ${py}px, transparent 0%, rgba(0,0,0,0.95) 80%, black 100%)`;
         }
 
         function movePlayer(dx, dy) {
             initAudio();
             if (levelFinished) return;
 
-            // 地狱模式：第一次移动才开始倒计时
             if (isHellMode && !timerStarted) {
                 startTimer();
-                document.getElementById('message').innerText = "跑！！！";
+                document.getElementById('message').innerText = "SYSTEM HACK INITIATED...";
+            }
+
+            // 控制反转逻辑
+            if (isHacked) {
+                dx = -dx;
+                dy = -dy;
             }
 
             let newX = playerPos.x + dx;
@@ -439,12 +497,11 @@
                 playerPos.y = newY;
                 playSound('move');
                 drawMaze();
+                updateFog();
                 checkWin();
             } else {
                 playSound('hit');
-                if (isHellMode) {
-                    gameOver("撞墙死亡！这需要绝对的精准。");
-                }
+                if (isHellMode) gameOver("COLLISION_DETECTED");
             }
         }
 
@@ -456,9 +513,7 @@
             else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') dx = 1;
 
             if (dx !== 0 || dy !== 0) {
-                if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.code) > -1) {
-                    e.preventDefault();
-                }
+                if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.code) > -1) e.preventDefault();
                 movePlayer(dx, dy);
             }
         });
@@ -474,25 +529,21 @@
         bindButton('btn-left', -1, 0);
         bindButton('btn-right', 1, 0);
 
-        let touchStartX = 0;
-        let touchStartY = 0;
+        let touchStartX = 0, touchStartY = 0;
 
-        document.getElementById('game-container').addEventListener('touchstart', e => {
+        document.getElementById('game-wrapper').addEventListener('touchstart', e => {
             touchStartX = e.changedTouches[0].screenX;
             touchStartY = e.changedTouches[0].screenY;
             e.preventDefault();
         }, {passive: false});
 
-        document.getElementById('game-container').addEventListener('touchend', e => {
+        document.getElementById('game-wrapper').addEventListener('touchend', e => {
             let diffX = e.changedTouches[0].screenX - touchStartX;
             let diffY = e.changedTouches[0].screenY - touchStartY;
             
             if (Math.abs(diffX) > 20 || Math.abs(diffY) > 20) {
-                if (Math.abs(diffX) > Math.abs(diffY)) {
-                    movePlayer(diffX > 0 ? 1 : -1, 0);
-                } else {
-                    movePlayer(0, diffY > 0 ? 1 : -1);
-                }
+                if (Math.abs(diffX) > Math.abs(diffY)) movePlayer(diffX > 0 ? 1 : -1, 0);
+                else movePlayer(0, diffY > 0 ? 1 : -1);
             }
         });
 
@@ -502,8 +553,9 @@
                 levelFinished = true;
                 timerStarted = false;
                 clearInterval(timerInterval);
+                clearInterval(hackInterval);
                 playSound('win');
-                document.getElementById('message').innerHTML = "🎉 <b>太强了！你是那千万分之一！</b>";
+                document.getElementById('message').innerHTML = "SYSTEM OVERRIDE SUCCESSFUL.";
                 setTimeout(() => {
                     initLevel(currentLevelIndex + 1);
                 }, 2000);
