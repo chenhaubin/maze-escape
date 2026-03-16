@@ -26,9 +26,12 @@
             font-weight: bold;
             align-items: center;
         }
-        #timer { color: #e74c3c; font-weight: bold; }
-        .hell-mode-text { color: #e74c3c; animation: blink 1s infinite; }
+        #timer { color: #e74c3c; font-weight: bold; font-size: 1.2em; }
+        .hell-mode-text { color: #e74c3c; animation: blink 1s infinite; font-weight: bold; }
         @keyframes blink { 50% { opacity: 0; } }
+
+        #stats-panel { margin-bottom: 10px; font-size: 0.9em; color: #bdc3c7; }
+        .death-count { color: #e74c3c; font-weight: bold; font-size: 1.2em; }
 
         #game-container {
             display: grid;
@@ -51,12 +54,12 @@
         @media (min-width: 600px) { #game-container { padding: 10px; gap: 2px; } }
         
         .wall { background-color: #7f8c8d; }
-        .wall.invisible { background-color: #ecf0f1; } /* 隐形墙看起来像路 */
         .path { background-color: #ecf0f1; }
-        .player { background-color: #e74c3c; border-radius: 50%; box-shadow: 0 0 5px #e74c3c; z-index: 10; }
-        .goal { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+        .player { background-color: #e74c3c; border-radius: 50%; box-shadow: 0 0 5px #e74c3c; z-index: 10; transition: all 0.05s; }
+        .goal { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); } 50% { transform: scale(1.05); } 100% { transform: scale(0.95); } }
         
-        #message { margin-top: 10px; font-size: 1.1em; text-align: center; height: 30px; color: #f1c40f; }
+        #message { margin-top: 10px; font-size: 1.1em; text-align: center; height: 30px; color: #f1c40f; font-weight: bold; }
         
         /* 虚拟方向键控制盘 */
         #d-pad {
@@ -85,6 +88,7 @@
             user-select: none;
             cursor: pointer;
             box-shadow: 0 4px #2980b9;
+            touch-action: manipulation;
         }
         .btn:active {
             background-color: #2980b9;
@@ -108,6 +112,7 @@
             border-radius: 5px;
             margin-top: 10px;
             box-shadow: 0 3px #d35400;
+            font-weight: bold;
         }
         .sys-btn:active {
             box-shadow: 0 0px #d35400;
@@ -118,6 +123,11 @@
 <body>
 
     <h1>迷宫逃脱 💀</h1>
+    
+    <div id="stats-panel" style="display:none;">
+        失败次数: <span id="death-counter" class="death-count">0</span> | 全球通关率: <span style="color:#f1c40f">0.00001%</span>
+    </div>
+
     <div class="info-panel">
         <span id="level-display">关卡: 1</span>
         <span id="timer-container" style="display:none;">⏳ <span id="timer">00.00</span></span>
@@ -139,7 +149,7 @@
         <div class="btn empty"></div>
     </div>
 
-    <button class="sys-btn" onclick="restartLevel()">重新开始本关</button>
+    <button class="sys-btn" onclick="restartLevel()">重新挑战</button>
 
     <script>
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -182,11 +192,11 @@
                 oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.5);
             } else if (type === 'fail') {
                 oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
-                oscillator.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.5);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-                oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.5);
+                oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.4);
+                gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.4);
             }
         }
 
@@ -207,36 +217,37 @@
                 hell: false
             },
             {
-                // 地狱难度：千万分之一
-                // 特征：1. 超大迷宫 2. 只有15秒时间 3. 碰到墙壁立刻回到起点 4. 包含隐形墙（2）和假终点（3）
+                // 地狱难度：纯操作挑战
+                // 极长且狭窄的单行道，没有任何隐形墙或骗局。
+                // 要求：全程无失误，速度快且精准，碰到任何墙壁直接重头开始。
                 size: 21,
                 layout: [
                     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
-                    [1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,0,1],
-                    [1,0,1,0,0,0,0,0,2,0,1,0,0,0,1,0,0,0,0,0,1],
-                    [1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1],
-                    [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,3,1], // 假终点(3)
-                    [1,1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1,1],
-                    [1,0,0,0,1,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,1],
-                    [1,0,1,0,1,0,1,0,1,0,1,0,1,1,1,1,1,1,1,0,1],
-                    [1,0,1,0,0,0,2,0,0,0,1,0,0,0,0,0,0,0,1,0,1],
-                    [1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,1,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,2,0,1,0,1,0,1,0,1],
-                    [1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,1,0,1],
-                    [1,0,1,3,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1], // 假终点(3)
-                    [1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1],
-                    [1,1,1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,1,0,1,0,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1],
+                    [1,0,1,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,1],
+                    [1,0,1,0,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,1],
+                    [1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1],
+                    [1,0,1,1,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1],
+                    [1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,1,0,1,1,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,0,0,1],
+                    [1,0,1,1,1,1,1,1,1,1,1,0,1,0,1,0,1,1,1,0,1],
+                    [1,0,1,0,0,0,0,0,0,0,1,0,1,0,1,0,0,0,1,0,1],
+                    [1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1,1,0,1,0,1],
+                    [1,0,1,0,1,0,0,0,1,0,1,0,1,0,0,0,1,0,1,0,1],
+                    [1,0,1,0,1,0,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
+                    [1,0,1,0,1,0,1,0,1,0,1,0,0,0,1,0,1,0,1,0,1],
+                    [1,0,1,0,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0,1],
+                    [1,0,1,0,1,0,1,0,1,0,0,0,1,0,1,0,1,0,1,0,1],
+                    [1,0,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0,1,0,1],
+                    [1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1],
                     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
                 ],
                 start: {x: 1, y: 1},
                 goal: {x: 19, y: 19},
                 hell: true,
-                timeLimit: 15.00 // 15秒极限通关
+                timeLimit: 12.00 // 极致的12秒跑酷
             },
             {
                 size: 15,
@@ -270,10 +281,23 @@
         let timerInterval;
         let timeLeft = 0;
         let isHellMode = false;
+        let deathCount = 0;
+
+        const taunts = [
+            "太慢了，手残了吗？",
+            "就这？连第一步都走不出去？",
+            "建议放弃，你不适合这个游戏。",
+            "别人闭着眼睛都过了。",
+            "要不要我帮你调慢一点？",
+            "碰壁=死，这么难懂吗？",
+            "你的手指是不是打结了？",
+            "再试一次，反正也是输。"
+        ];
 
         function initLevel(index) {
             if (index >= levels.length) {
-                document.getElementById('message').innerHTML = "🏆 <b>你竟然通关了所有迷宫！膜拜大神！</b>";
+                document.getElementById('message').innerHTML = "🏆 <b>真正的神！你征服了迷宫！</b>";
+                document.getElementById('stats-panel').style.display = 'none';
                 return;
             }
             
@@ -288,25 +312,28 @@
             document.getElementById('level-display').innerText = `关卡: ${index + 1} / ${levels.length}`;
             const hint = document.getElementById('hint');
             const msg = document.getElementById('message');
+            const stats = document.getElementById('stats-panel');
             
             if (isHellMode) {
-                hint.innerHTML = "<span class='hell-mode-text'>💀 地狱模式：碰壁即死，包含隐形墙与假终点，限时逃亡！</span>";
+                stats.style.display = 'block';
+                hint.innerHTML = "<span class='hell-mode-text'>💀 纯粹的技术：没有任何隐形墙。限时12秒，碰壁即死！</span>";
                 document.getElementById('timer-container').style.display = 'inline';
                 timeLeft = level.timeLimit;
                 updateTimerDisplay();
-                msg.innerText = "准备迎接绝望吧...";
-                startTimer();
+                msg.innerText = deathCount > 0 ? taunts[Math.floor(Math.random() * taunts.length)] : "证明你实力的时刻到了。";
+                
+                // 只有在第一次移动时才开始计时
             } else {
+                stats.style.display = 'none';
                 hint.innerText = "滑动屏幕、点击屏幕按钮 或 使用键盘方向键移动";
                 document.getElementById('timer-container').style.display = 'none';
                 msg.innerText = "";
             }
             
             const container = document.getElementById('game-container');
-            // 计算格子大小，地狱模式迷宫较大，需要更小的格子
             let containerSize = window.innerWidth > 600 ? 500 : window.innerWidth - 40;
             let cellSize = Math.floor(containerSize / level.size);
-            if (cellSize < 12) cellSize = 12; // 最小限制
+            if (cellSize < 12) cellSize = 12;
             
             container.style.gridTemplateColumns = `repeat(${level.size}, ${cellSize}px)`;
             container.style.gridTemplateRows = `repeat(${level.size}, ${cellSize}px)`;
@@ -318,16 +345,20 @@
             initLevel(currentLevelIndex);
         }
 
+        let timerStarted = false;
         function startTimer() {
+            if (timerStarted) return;
+            timerStarted = true;
             timerInterval = setInterval(() => {
                 if (levelFinished) {
                     clearInterval(timerInterval);
+                    timerStarted = false;
                     return;
                 }
                 timeLeft -= 0.01;
                 if (timeLeft <= 0) {
                     timeLeft = 0;
-                    gameOver("时间到！你永远留在了这里。");
+                    gameOver("时间到！太慢了！");
                 }
                 updateTimerDisplay();
             }, 10);
@@ -339,9 +370,19 @@
 
         function gameOver(reason) {
             levelFinished = true;
+            timerStarted = false;
             clearInterval(timerInterval);
             playSound('fail');
-            document.getElementById('message').innerHTML = `❌ <b>${reason}</b>`;
+            
+            if (isHellMode) {
+                deathCount++;
+                document.getElementById('death-counter').innerText = deathCount;
+                let taunt = taunts[Math.floor(Math.random() * taunts.length)];
+                document.getElementById('message').innerHTML = `❌ <b>${reason}</b><br><span style="font-size:0.8em">${taunt}</span>`;
+            } else {
+                document.getElementById('message').innerHTML = `❌ <b>${reason}</b>`;
+            }
+            
             document.getElementById('game-container').classList.add('shake');
             setTimeout(() => {
                 document.getElementById('game-container').classList.remove('shake');
@@ -362,17 +403,13 @@
                     
                     if (cellType === 1) {
                         cell.classList.add('wall');
-                    } else if (cellType === 2) {
-                        cell.classList.add('wall', 'invisible'); // 隐形墙
-                    } else if (cellType === 3) {
-                        cell.classList.add('goal'); // 假终点
                     } else {
                         cell.classList.add('path');
                     }
 
                     if (x === playerPos.x && y === playerPos.y) {
                         cell.classList.add('player');
-                        cell.classList.remove('path', 'goal', 'wall', 'invisible');
+                        cell.classList.remove('path');
                     } else if (x === level.goal.x && y === level.goal.y) {
                         cell.classList.add('goal');
                         cell.classList.remove('path');
@@ -387,27 +424,26 @@
             initAudio();
             if (levelFinished) return;
 
+            // 地狱模式：第一次移动才开始倒计时
+            if (isHellMode && !timerStarted) {
+                startTimer();
+                document.getElementById('message').innerText = "跑！！！";
+            }
+
             let newX = playerPos.x + dx;
             let newY = playerPos.y + dy;
             let targetCell = currentLayout[newY] ? currentLayout[newY][newX] : undefined;
 
-            if (targetCell === 0 || targetCell === 3 || (newX === levels[currentLevelIndex].goal.x && newY === levels[currentLevelIndex].goal.y)) {
-                // 如果是假终点 (3)
-                if (targetCell === 3) {
-                    gameOver("哈哈！这是假的终点，你被骗了。");
-                    return;
-                }
-
+            if (targetCell === 0 || (newX === levels[currentLevelIndex].goal.x && newY === levels[currentLevelIndex].goal.y)) {
                 playerPos.x = newX;
                 playerPos.y = newY;
                 playSound('move');
                 drawMaze();
                 checkWin();
             } else {
-                // 撞墙处理
                 playSound('hit');
                 if (isHellMode) {
-                    gameOver("撞墙了！在地狱模式下这是死罪。");
+                    gameOver("撞墙死亡！这需要绝对的精准。");
                 }
             }
         }
@@ -464,12 +500,13 @@
             const goal = levels[currentLevelIndex].goal;
             if (playerPos.x === goal.x && playerPos.y === goal.y) {
                 levelFinished = true;
+                timerStarted = false;
                 clearInterval(timerInterval);
                 playSound('win');
-                document.getElementById('message').innerHTML = "🎉 <b>通关本层！进入下一关...</b>";
+                document.getElementById('message').innerHTML = "🎉 <b>太强了！你是那千万分之一！</b>";
                 setTimeout(() => {
                     initLevel(currentLevelIndex + 1);
-                }, 1500);
+                }, 2000);
             }
         }
 
